@@ -3,6 +3,7 @@ from imutils import face_utils
 import imutils
 import dlib
 import cv2
+import time
 
 
 def eye_aspect_ratio(eye):
@@ -31,6 +32,7 @@ predictor = dlib.shape_predictor(shape_pred)
 
 def blink(cap, COUNTER, TOTAL, EYE_AR_THRESH, EYE_AR_CONSEC_FRAMES):
     while True:
+        start = time.time()
         _, frame = cap.read()
         frame = imutils.resize(frame, width=450)
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -72,12 +74,15 @@ def blink(cap, COUNTER, TOTAL, EYE_AR_THRESH, EYE_AR_CONSEC_FRAMES):
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
             cv2.imshow("Frame", frame)
-
+            if TOTAL >= 2:
+                return 
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 return TOTAL
             print(TOTAL)
         except Exception as e:
             print(e)
+        end = time.time()
+        print(end-start, 'time')
 
 
 def eye_blink_counter(cap):
