@@ -32,32 +32,30 @@ class App:
         self.EYE_AR_THRESH = 0.24
         # Booline values
         self.dist_Bool = False
-        self.count_Bool = False
+        self.ebc_Bool = False
         self.start_Bool = False
         # images for buttons
         distance_btn_image = tkinter.PhotoImage(file='./images/distance.png')
         eyeBlinkCount_btn_image = tkinter.PhotoImage(
             file='./images/eyeCount.png')
-        start_btn_image = tkinter.PhotoImage(file="./images/start1.png")
+        start_btn_image = tkinter.PhotoImage(file="./images/start.png")
 
         # open video source (by default this will try to open the computer webcam)
         self.vid = MyVideoCapture(self.video_source)
-        Distance(window)
 
         # Create a canvas that can fit the above video source size
         self.window.geometry('850x550')
         self.window.configure(bg="white")
-        self.canvas = tkinter.Canvas(
-            window)
+        self.canvas = tkinter.Canvas(window)
         self.canvas.place(x=505, y=23)
 
         # Button for measuring distance
-        # tkinter.Button(window, text="Distance", bg='#ffb600', padx=12, pady=12, border=0, borderwidth=0, highlightthickness=0,
-        #                fg='white', command=self.doc).place(x=110, y=110)
+        tkinter.Button(window, image=distance_btn_image, border=0, borderwidth=0, highlightthickness=0,
+                       fg='white', command=self.dm).place(x=110, y=110)
 
         # Button for counting eyeblink
         tkinter.Button(window, image=eyeBlinkCount_btn_image, border=0, borderwidth=0, highlightthickness=0,
-                       fg='white', command=self.bc).place(x=110, y=210)
+                       fg='white', command=self.ebc).place(x=110, y=210)
 
         # Button for start
         tkinter.Button(window, image=start_btn_image, border=0, borderwidth=0, highlightthickness=0,
@@ -66,22 +64,25 @@ class App:
         # Button for stop
         tkinter.Button(window, text="Stop", border=0, borderwidth=0, highlightthickness=0, padx=12, pady=6,
                        bg='red', fg='white', command=self.stop).place(x=720, y=500)
+        
+        # Button for clearing label
+        tkinter.Button(window, text='Clear', border=0, borderwidth=0, highlightthickness=0, padx=12, pady=6,
+                       bg='red', fg='white', command=self.clear).place(x=800, y=500)
 
-        v1 = float()
+        # Brightness controller 
+        v1 = tkinter.DoubleVar()
         v1.set(brightness.current_brightness)
         tkinter.Scale(window, from_=1, to=100, bg="white", label="Brightness",
-            highlightthickness=0, length=200, command=lambda val: brightness.set_brightness(val), variable=v1).place(x=300, y=100)
+                      highlightthickness=0, length=200, command=lambda val: brightness.set_brightness(val), variable=v1).place(x=300, y=100)
 
         tkinter.Scale(window, from_=1, to=100, bg="white", label="Yellow",
-            highlightthickness=0, length=200).place(x=400, y=100)
-
-
+                      highlightthickness=0, length=200).place(x=400, y=100)
 
         # Label for displaing distance
-        # self.dist_label = tkinter.Label(
-        #     window, text="", pady=12, padx=18,
-        #     bg='#008cff', fg='white')
-        # self.dist_label.place(x=420, y=380)
+        self.dist_label = tkinter.Label(
+            window, text="", pady=12, padx=18,
+            bg="#008cff", fg='white')
+        self.dist_label.place(x=420, y=380)
 
         # Label for displaing eye blink count
         self.blink_count_label = tkinter.Label(
@@ -94,25 +95,30 @@ class App:
 
         self.window.mainloop()
 
-    # def doc(self):
-    #     self.dist_Bool = True
-    #     self.count_Bool = False
-    #     self.start_Bool = False
+    def dm(self):
+        self.dist_Bool = True
+        self.ebc_Bool = False
+        self.start_Bool = False
 
-    def bc(self):
+    def ebc(self):
         self.dist_Bool = False
-        self.count_Bool = True
+        self.ebc_Bool = True
+        self.start_Bool = False
+
+    def stop(self):
+        self.dist_Bool = False
+        self.ebc_Bool = False
         self.start_Bool = False
 
     def start(self):
         self.dist_Bool = False
-        self.count_Bool = False
+        self.ebc_Bool = False
         self.start_Bool = True
 
-    def stop(self):
-        self.dist_Bool = False
-        self.count_Bool = False
-        self.start_Bool = False
+    def clear(self):
+        self.dist_label['text']  = ""
+        self.blink_count_label['text'] = ""
+        self.TOTAL = 0
 
     def update(self):
         # Get a frame from the video source
@@ -124,10 +130,9 @@ class App:
                 image=PIL.Image.fromarray(newframe))
             self.canvas.create_image(0, 0, image=self.photo, anchor=tkinter.NW)
 
-        # dist_class = Distance()
-
-
-        if self.count_Bool and self.start_Bool is False:
+        if self.dist_Bool and self.start_Bool is False:
+            self.distance(frame)
+        if self.ebc_Bool and self.start_Bool is False:
             self.eye_blink_count(frame)
         if self.start_Bool:
             self.distance(frame)
@@ -135,19 +140,19 @@ class App:
 
         self.window.after(self.delay, self.update)
 
-    # def distance(self, frame):
-    #     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    #     rects = self.detector(gray, 0)
-    #     for rect in rects:
-    #         shape = self.predictor(gray, rect)
-    #         shape = face_utils.shape_to_np(shape)
-    #         area = cv2.contourArea(
-    #             np.reshape(shape, (68, 1, 2)))
-    #         self.dist_label['text'] = area
-    #         if area > 15000:
-    #             self.dist_label['bg'] = 'red'
-    #         else:
-    #             self.dist_label['bg'] = 'green'
+    def distance(self, frame):
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        rects = self.detector(gray, 0)
+        for rect in rects:
+            shape = self.predictor(gray, rect)
+            shape = face_utils.shape_to_np(shape)
+            area = cv2.contourArea(
+                np.reshape(shape, (68, 1, 2)))
+            self.dist_label['text'] = area
+            if area > 15000:
+                self.dist_label['bg'] = 'red'
+            else:
+                self.dist_label['bg'] = 'green'
 
     def eye_aspect_ratio(self, eye):
         A = dist.euclidean(eye[1], eye[5])
@@ -219,40 +224,6 @@ class MyVideoCapture:
     def __del__(self):
         if self.vid.isOpened():
             self.vid.release()
-
-
-class Eye:
-
-    def __init__(self) -> None:
-        pass
-
-
-class Distance(App):
-
-    def __init__(self, window, window_title, video_source):
-        super().__init__(window, window_title, video_source=video_source)
-
-        tkinter.Button(window, text="Distance", bg='#ffb600', padx=12, pady=12, border=0, borderwidth=0, highlightthickness=0,
-                       fg='white', command=self.doc).place(x=110, y=110)
-        self.dist_label = tkinter.Label(
-            window, text="", pady=12, padx=18,
-            bg='#008cff', fg='white')
-        self.dist_label.place(x=420, y=380)
-
-
-    def distance(self, frame):
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        rects = self.detector(gray, 0)
-        for rect in rects:
-            shape = self.predictor(gray, rect)
-            shape = face_utils.shape_to_np(shape)
-            area = cv2.contourArea(
-                np.reshape(shape, (68, 1, 2)))
-            self.dist_label['text'] = area
-            if area > 15000:
-                self.dist_label['bg'] = 'red'
-            else:
-                self.dist_label['bg'] = 'green'
 
 
 App(tkinter.Tk(), "Tkinter and OpenCV")
